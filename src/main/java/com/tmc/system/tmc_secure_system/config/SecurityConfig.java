@@ -30,6 +30,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/error", "/css/**", "/js/**", "/images/**").permitAll()
+                .requestMatchers("/login", "/403").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/analyst/**").hasRole("IT_ANALYST")
                 .requestMatchers("/api/ot/**").hasRole("OT_OPERATOR")
@@ -37,8 +38,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/ciso/**").hasRole("CISO")
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form.successHandler(successHandler))
+            .formLogin(form -> form
+                .loginPage("/login")
+                .successHandler(successHandler)
+                .failureUrl("/login?error")
+                .permitAll()
+            )
             .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout").permitAll())
+            .exceptionHandling(ex -> ex.accessDeniedPage("/403"))
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 
         return http.build();
