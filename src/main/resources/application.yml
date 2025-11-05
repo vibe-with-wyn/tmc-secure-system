@@ -8,6 +8,9 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    open-in-view: false
+    properties:
+      hibernate.jdbc.lob.non_contextual_creation: true
   servlet:
     multipart:
       max-file-size: 20MB

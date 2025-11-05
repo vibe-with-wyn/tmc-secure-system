@@ -6,7 +6,9 @@ import java.util.List;
 import com.tmc.system.tmc_secure_system.entity.enums.EncryptionAlgorithm;
 import com.tmc.system.tmc_secure_system.entity.enums.FileStatus;
 
+import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,11 +17,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Data
 @Entity
@@ -61,8 +64,10 @@ public class EncryptedFile {
     @Column(nullable = false, length = 24)
     private String iv;
 
-    @Lob
-    @Column(nullable = false)
+    // Store ciphertext as BYTEA and load lazily to avoid LO streaming
+    @Basic(fetch = FetchType.LAZY)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "ciphertext", nullable = false, columnDefinition = "bytea")
     private byte[] ciphertext;
 
     @Enumerated(EnumType.STRING)

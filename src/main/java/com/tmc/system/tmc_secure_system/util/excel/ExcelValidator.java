@@ -11,7 +11,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelValidator {
 
-    // Canonical required headers based on your sample:
     // Timestamp | MachineID | Temperature (°C) | Pressure (bar) | Vibration (Hz) |
     // OutputRate (units/hr) | EnergyConsumption (kWh) | OperatorID | Status
     private static final Set<String> REQUIRED_HEADERS_CANONICAL = Set.of(

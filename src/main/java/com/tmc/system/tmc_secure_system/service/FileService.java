@@ -2,6 +2,7 @@ package com.tmc.system.tmc_secure_system.service;
 
 import java.time.LocalDateTime;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,7 +25,7 @@ public class FileService {
     public FileService(EncryptionService encryptionService,
                        EncryptedFileRepository fileRepo,
                        UserRepository userRepo,
-                       String appAesKeyId) {
+                       @Qualifier("appAesKeyId") String appAesKeyId) {
         this.encryptionService = encryptionService;
         this.fileRepo = fileRepo;
         this.userRepo = userRepo;

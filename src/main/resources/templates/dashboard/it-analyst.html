@@ -17,7 +17,38 @@
 </nav>
 <div class="container py-4">
   <h3>IT Analyst</h3>
-  <p>Assigned files and decryption actions will appear here.</p>
+  <p class="text-muted">Assigned encrypted files</p>
+
+  <div th:if="${#lists.isEmpty(assignments)}" class="alert alert-info">
+    No active assignments found.
+  </div>
+
+  <div th:unless="${#lists.isEmpty(assignments)}" class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+      <tr>
+        <th>Assignment ID</th>
+        <th>File ID</th>
+        <th>Filename</th>
+        <th>Assigned At</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="a : ${assignments}">
+        <td th:text="${a.id}">1</td>
+        <td th:text="${a.fileId}">10</td>
+        <td th:text="${a.filename}">file.xlsx</td>
+        <td th:text="${#temporals.format(a.assignedAt, 'yyyy-MM-dd HH:mm')}">2025-11-05</td>
+        <td>
+          <a th:href="@{'/api/analyst/files/' + ${a.fileId} + '/download'}" class="btn btn-primary btn-sm">
+            Decrypt & Download
+          </a>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 </body>
 </html>
