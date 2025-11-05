@@ -12,7 +12,6 @@ import com.tmc.system.tmc_secure_system.entity.enums.AssignmentPermission;
 import com.tmc.system.tmc_secure_system.entity.enums.AssignmentStatus;
 
 public interface FileAssignmentRepository extends JpaRepository<FileAssignment, Long> {
-
     @Query("select fa from FileAssignment fa where fa.analyst.id = :analystId and fa.status = :status")
     List<FileAssignment> findByAnalystAndStatus(@Param("analystId") Long analystId,
                                                 @Param("status") AssignmentStatus status);
@@ -30,10 +29,20 @@ public interface FileAssignmentRepository extends JpaRepository<FileAssignment, 
                           @Param("status") AssignmentStatus status,
                           @Param("permission") AssignmentPermission permission);
 
-    // New: DTO projection to avoid lazy issues in views
+    @Query("""
+           select fa from FileAssignment fa
+             join fetch fa.file f
+             join fetch fa.analyst a
+             join fetch fa.assignedBy b
+           where fa.status = :status
+           order by fa.assignedAt desc
+           """)
+    List<FileAssignment> findActiveWithJoins(@Param("status") AssignmentStatus status);
+
     @Query("""
            select new com.tmc.system.tmc_secure_system.dto.AssignmentView(
-                 fa.id, f.id, f.filename, fa.assignedAt)
+               fa.id, f.id, f.filename, fa.assignedAt
+           )
            from FileAssignment fa
              join fa.file f
            where fa.analyst.id = :analystId
@@ -42,4 +51,6 @@ public interface FileAssignmentRepository extends JpaRepository<FileAssignment, 
            """)
     List<AssignmentView> findAssignmentViews(@Param("analystId") Long analystId,
                                              @Param("status") AssignmentStatus status);
+
+    boolean existsByFile_IdAndAnalyst_IdAndStatus(Long fileId, Long analystId, AssignmentStatus status);
 }

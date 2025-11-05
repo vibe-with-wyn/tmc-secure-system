@@ -33,24 +33,22 @@ public class OtOperatorController {
     @PreAuthorize("hasRole('OT_OPERATOR')")
     @PostMapping("/api/ot/upload")
     public String upload(@RequestParam("file") MultipartFile file, Model model, Principal principal) {
-        if (file == null || file.isEmpty()) {
-            model.addAttribute("error", "Please select an Excel file (.xlsx).");
-            return "dashboard/ot-operator";
-        }
-        if (!file.getOriginalFilename().toLowerCase().endsWith(".xlsx")) {
-            model.addAttribute("error", "Only .xlsx files are supported.");
-            return "dashboard/ot-operator";
-        }
         try {
+            if (file == null || file.isEmpty()) {
+                model.addAttribute("error", "Please select an Excel file (.xlsx).");
+                return "dashboard/ot-operator";
+            }
+            if (!file.getOriginalFilename().toLowerCase().endsWith(".xlsx")) {
+                model.addAttribute("error", "Only .xlsx files are supported.");
+                return "dashboard/ot-operator";
+            }
             var result = ExcelValidator.validate(file.getInputStream());
             if (!result.valid()) {
                 model.addAttribute("error", result.message());
                 return "dashboard/ot-operator";
             }
-
             var saved = fileService.encryptAndStore(file, principal.getName());
-            model.addAttribute("success", "File validated and encrypted successfully. Ref ID: " + saved.getId());
-
+            model.addAttribute("success", "File validated and encrypted. Ref ID: " + saved.getId());
         } catch (Exception ex) {
             model.addAttribute("error", "Upload failed: " + ex.getMessage());
         }
