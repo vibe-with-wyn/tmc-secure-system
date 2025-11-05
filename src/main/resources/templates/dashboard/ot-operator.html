@@ -31,7 +31,10 @@
         <div class="mb-3">
           <label for="file" class="form-label">Select .xlsx file</label>
           <input class="form-control" type="file" id="file" name="file" accept=".xlsx" required>
-          <div class="form-text">Required headers: timestamp, temperature, pressure, output_rate</div>
+          <div class="form-text">
+            Required headers: Timestamp, MachineID, Temperature (°C), Pressure (bar), Vibration (Hz),
+            OutputRate (units/hr), EnergyConsumption (kWh), OperatorID, Status
+          </div>
         </div>
         <button type="submit" class="btn btn-primary">Validate File</button>
       </form>
