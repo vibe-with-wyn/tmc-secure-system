@@ -16,3 +16,9 @@ server:
   servlet:
     session:
       timeout: 15m
+app:
+  crypto:
+    aes-gcm:
+      # 32-byte Base64 key for demo
+      base64-key: "DYieTKmfVjRXk7KeLNKKJrzzJEz+izQNyXDmbOzTM0s="
+      key-id: "c64e5bf1-0958-4936-8586-9b5152c208b9"

@@ -3,6 +3,7 @@ package com.tmc.system.tmc_secure_system.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.tmc.system.tmc_secure_system.entity.enums.EncryptionAlgorithm;
 import com.tmc.system.tmc_secure_system.entity.enums.FileStatus;
 
 import jakarta.persistence.Column;
@@ -35,25 +36,38 @@ public class EncryptedFile {
     @Column(nullable = false)
     private String filename;
 
+    @Column(name = "content_type", length = 100)
+    private String contentType;
+
+    @Column(name = "size_bytes")
+    private Long sizeBytes;
+
     @ManyToOne
     @JoinColumn(name = "uploader_id", nullable = false)
     private User uploader;
 
     @Column(name = "upload_time", nullable = false)
-    private LocalDateTime uploadTime;
+    private LocalDateTime uploadTime = LocalDateTime.now();
 
-    @Column(name = "file_hash", nullable = false, length = 128)
+    // SHA-256 of ciphertext (Base64)
+    @Column(name = "file_hash", nullable = false, length = 88)
     private String fileHash;
 
-    @Column(name = "aes_key_ref", nullable = false, columnDefinition = "TEXT")
+    // Key reference/version
+    @Column(name = "aes_key_ref", nullable = false, length = 64)
     private String aesKeyRef;
 
-    @Column(nullable = false, length = 64)
+    // IV stored Base64 for readability
+    @Column(nullable = false, length = 24)
     private String iv;
 
     @Lob
     @Column(nullable = false)
     private byte[] ciphertext;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private EncryptionAlgorithm algorithm = EncryptionAlgorithm.AES_GCM_256;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
