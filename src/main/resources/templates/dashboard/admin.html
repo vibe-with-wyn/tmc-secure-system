@@ -146,16 +146,16 @@
 
     <!-- Logs -->
     <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header">Audit/Incident Logs</div>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">Filter Logs</div>
         <div class="card-body">
-          <form class="row g-2 mb-3" method="get" th:action="@{/api/admin/home}">
+          <form class="row g-2 mb-1" method="get" th:action="@{/api/admin/home}">
             <div class="col-md-3">
               <label class="form-label">User</label>
               <input class="form-control" name="user" th:value="${userFilter}"/>
             </div>
             <div class="col-md-3">
-              <label class="form-label">Severity</label>
+              <label class="form-label">Severity (Incidents)</label>
               <select class="form-select" name="severity">
                 <option th:selected="${severityFilter == null}" value="">Any</option>
                 <option th:each="s : ${severities}" th:value="${s}" th:text="${s}"
@@ -171,52 +171,103 @@
               <input class="form-control" type="date" name="to" th:value="${toFilter}"/>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-              <button class="btn btn-outline-primary w-100" type="submit">Filter</button>
+              <button class="btn btn-outline-primary w-100" type="submit">Apply</button>
             </div>
           </form>
+        </div>
+      </div>
 
-          <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead>
-              <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Type</th>
-                <th>Severity</th>
-                <th>Message</th>
-                <th>IP</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr th:each="l : ${logs.content}"
-                  th:classappend="${l.severity.name()=='CRITICAL'} ? 'table-danger' : (${l.severity.name()=='HIGH'} ? 'table-warning' : '')">
-                <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
-                <td th:text="${l.username}"></td>
-                <td th:text="${l.eventType}"></td>
-                <td><span class="badge" th:classappend="
-                     ${l.severity.name()=='CRITICAL'} ? 'text-bg-danger' : 
-                     (${l.severity.name()=='HIGH'} ? 'text-bg-warning' : 'text-bg-secondary')"
-                    th:text="${l.severity}"></span></td>
-                <td th:text="${l.description}"></td>
-                <td th:text="${l.ipAddress}"></td>
-              </tr>
-              </tbody>
-            </table>
+      <div class="row g-4">
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-header">Audit Logs</div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                    <th>IP</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  <tr th:each="l : ${audits.content}">
+                    <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                    <td th:text="${l.username}"></td>
+                    <td th:text="${l.actionType}"></td>
+                    <td th:text="${l.description}"></td>
+                    <td th:text="${l.ipAddress}"></td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+              <nav th:if="${audits.totalPages > 1}" aria-label="Audit pagination">
+                <ul class="pagination pagination-sm">
+                  <li class="page-item" th:classappend="${audits.first} ? 'disabled'">
+                    <a class="page-link" th:href="@{/api/admin/home(page=${audits.number-1}, size=${audits.size}, user=${userFilter}, severity=${severityFilter}, from=${fromFilter}, to=${toFilter})}">Prev</a>
+                  </li>
+                  <li class="page-item disabled">
+                    <span class="page-link" th:text="${audits.number + 1} + ' / ' + ${audits.totalPages}"></span>
+                  </li>
+                  <li class="page-item" th:classappend="${audits.last} ? 'disabled'">
+                    <a class="page-link" th:href="@{/api/admin/home(page=${audits.number+1}, size=${audits.size}, user=${userFilter}, severity=${severityFilter}, from=${fromFilter}, to=${toFilter})}">Next</a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
           </div>
+        </div>
 
-          <nav th:if="${logs.totalPages > 1}" aria-label="Log pagination">
-            <ul class="pagination pagination-sm">
-              <li class="page-item" th:classappend="${logs.first} ? 'disabled'">
-                <a class="page-link" th:href="@{/api/admin/home(page=${logs.number-1}, size=${logs.size}, user=${userFilter}, severity=${severityFilter}, from=${fromFilter}, to=${toFilter})}">Prev</a>
-              </li>
-              <li class="page-item disabled">
-                <span class="page-link" th:text="${logs.number + 1} + ' / ' + ${logs.totalPages}"></span>
-              </li>
-              <li class="page-item" th:classappend="${logs.last} ? 'disabled'">
-                <a class="page-link" th:href="@{/api/admin/home(page=${logs.number+1}, size=${logs.size}, user=${userFilter}, severity=${severityFilter}, from=${fromFilter}, to=${toFilter})}">Next</a>
-              </li>
-            </ul>
-          </nav>
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-header">Incident Logs</div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Message</th>
+                    <th>IP</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  <tr th:each="l : ${incidents.content}"
+                      th:classappend="${l.severity.name()=='CRITICAL'} ? 'table-danger' : (${l.severity.name()=='HIGH'} ? 'table-warning' : '')">
+                    <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                    <td th:text="${l.username}"></td>
+                    <td th:text="${l.eventType}"></td>
+                    <td><span class="badge" th:classappend="
+                         ${l.severity.name()=='CRITICAL'} ? 'text-bg-danger' :
+                         (${l.severity.name()=='HIGH'} ? 'text-bg-warning' : 'text-bg-secondary')"
+                        th:text="${l.severity}"></span></td>
+                    <td th:text="${l.description}"></td>
+                    <td th:text="${l.ipAddress}"></td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+              <nav th:if="${incidents.totalPages > 1}" aria-label="Incident pagination">
+                <ul class="pagination pagination-sm">
+                  <li class="page-item" th:classappend="${incidents.first} ? 'disabled'">
+                    <a class="page-link" th:href="@{/api/admin/home(page=${incidents.number-1}, size=${incidents.size}, user=${userFilter}, severity=${severityFilter}, from=${fromFilter}, to=${toFilter})}">Prev</a>
+                  </li>
+                  <li class="page-item disabled">
+                    <span class="page-link" th:text="${incidents.number + 1} + ' / ' + ${incidents.totalPages}"></span>
+                  </li>
+                  <li class="page-item" th:classappend="${incidents.last} ? 'disabled'">
+                    <a class="page-link" th:href="@{/api/admin/home(page=${incidents.number+1}, size=${incidents.size}, user=${userFilter}, severity=${severityFilter}, from=${fromFilter}, to=${toFilter})}">Next</a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -29,14 +29,14 @@ import com.tmc.system.tmc_secure_system.entity.User;
 import com.tmc.system.tmc_secure_system.entity.enums.AssignmentPermission;
 import com.tmc.system.tmc_secure_system.entity.enums.AssignmentStatus;
 import com.tmc.system.tmc_secure_system.entity.enums.IncidentSeverity;
-import com.tmc.system.tmc_secure_system.entity.enums.IncidentStatus;
-import com.tmc.system.tmc_secure_system.entity.enums.IncidentType;
 import com.tmc.system.tmc_secure_system.entity.enums.RoleName;
 import com.tmc.system.tmc_secure_system.entity.enums.UserStatus;
 import com.tmc.system.tmc_secure_system.repository.EncryptedFileRepository;
 import com.tmc.system.tmc_secure_system.repository.FileAssignmentRepository;
 import com.tmc.system.tmc_secure_system.repository.IncidentLogRepository;
 import com.tmc.system.tmc_secure_system.repository.UserRepository;
+import com.tmc.system.tmc_secure_system.entity.AuditLog;
+import com.tmc.system.tmc_secure_system.repository.AuditLogRepository;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -53,6 +53,7 @@ public class AdminController {
     private final EncryptedFileRepository fileRepo;
     private final FileAssignmentRepository assignmentRepo;
     private final IncidentLogRepository incidentRepo;
+    private final AuditLogRepository auditLogRepo;
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping("/api/admin/home")
@@ -81,33 +82,42 @@ public class AdminController {
                     .orElse(null);
         }
 
-        // Make captured variables effectively final for the lambda
         final Long finalActorId = actorId;
         final LocalDateTime fromTs = from;
         final LocalDateTime toTs = to;
 
-        Specification<IncidentLog> spec = (root, query, cb) -> {
-            java.util.List<Predicate> predicates = new java.util.ArrayList<>();
+        Specification<IncidentLog> incidentSpec = (root, query, cb) -> {
+            java.util.List<Predicate> ps = new java.util.ArrayList<>();
             if (finalActorId != null) {
                 Join<Object, Object> actor = root.join("actor", JoinType.LEFT);
-                predicates.add(cb.equal(actor.get("id"), finalActorId));
+                ps.add(cb.equal(actor.get("id"), finalActorId));
             }
             if (severity != null) {
-                predicates.add(cb.equal(root.get("severity"), severity));
+                ps.add(cb.equal(root.get("severity"), severity));
             }
-            if (fromTs != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("eventTime"), fromTs));
-            }
-            if (toTs != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("eventTime"), toTs));
-            }
+            if (fromTs != null) ps.add(cb.greaterThanOrEqualTo(root.get("eventTime"), fromTs));
+            if (toTs != null) ps.add(cb.lessThanOrEqualTo(root.get("eventTime"), toTs));
             query.orderBy(cb.desc(root.get("eventTime")));
-            return cb.and(predicates.toArray(new Predicate[0]));
+            return cb.and(ps.toArray(new Predicate[0]));
         };
 
-        Page<IncidentLog> logs = incidentRepo.findAll(spec, pageable);
+        Specification<AuditLog> auditSpec = (root, query, cb) -> {
+            java.util.List<Predicate> ps = new java.util.ArrayList<>();
+            if (finalActorId != null) {
+                Join<Object, Object> actor = root.join("actor", JoinType.LEFT);
+                ps.add(cb.equal(actor.get("id"), finalActorId));
+            }
+            if (fromTs != null) ps.add(cb.greaterThanOrEqualTo(root.get("eventTime"), fromTs));
+            if (toTs != null) ps.add(cb.lessThanOrEqualTo(root.get("eventTime"), toTs));
+            query.orderBy(cb.desc(root.get("eventTime")));
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
 
-        model.addAttribute("logs", logs);
+        Page<IncidentLog> incidents = incidentRepo.findAll(incidentSpec, pageable);
+        Page<AuditLog> audits = auditLogRepo.findAll(auditSpec, pageable);
+
+        model.addAttribute("incidents", incidents);
+        model.addAttribute("audits", audits);
         model.addAttribute("userFilter", userFilter);
         model.addAttribute("severityFilter", severity);
         model.addAttribute("fromFilter", fromDate);
@@ -118,20 +128,18 @@ public class AdminController {
 
     private void logAdminAction(Principal principal, HttpServletRequest request,
                                 IncidentSeverity sev, String description, Long ignoredRefId) {
-        IncidentLog log = new IncidentLog();
-        log.setUsername(principal != null ? principal.getName() : "system");
-        log.setEventType(IncidentType.ADMIN_ACTION);
-        log.setSeverity(sev);
-        log.setStatus(IncidentStatus.OPEN);
+        // Move to audit log (admin actions are audit)
+        com.tmc.system.tmc_secure_system.entity.AuditLog log = new com.tmc.system.tmc_secure_system.entity.AuditLog();
+        String username = principal != null ? principal.getName() : "system";
+        log.setUsername(username);
+        log.setActionType(com.tmc.system.tmc_secure_system.entity.enums.AuditAction.ADMIN_ACTION);
         log.setDescription(description);
         log.setIpAddress(request != null ? request.getRemoteAddr() : null);
         if (request != null && request.getSession(false) != null) {
             log.setSessionId(request.getSession(false).getId());
         }
-        // set actor if resolvable
-        userRepo.findByUsernameIgnoreCaseOrEmailIgnoreCase(log.getUsername(), log.getUsername())
-                .ifPresent(log::setActor);
-        incidentRepo.save(log);
+        userRepo.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username).ifPresent(log::setActor);
+        auditLogRepo.save(log);
     }
 
     private static LocalDateTime parseDateStart(String s) {

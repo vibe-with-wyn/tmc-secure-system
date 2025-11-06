@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.tmc.system.tmc_secure_system.entity.AuditLog;
 import com.tmc.system.tmc_secure_system.entity.IncidentLog;
-import com.tmc.system.tmc_secure_system.entity.enums.IncidentSeverity;
-import com.tmc.system.tmc_secure_system.entity.enums.IncidentStatus;
-import com.tmc.system.tmc_secure_system.entity.enums.IncidentType;
+import com.tmc.system.tmc_secure_system.entity.enums.AuditAction;
+import com.tmc.system.tmc_secure_system.repository.AuditLogRepository;
 import com.tmc.system.tmc_secure_system.repository.IncidentLogRepository;
 import com.tmc.system.tmc_secure_system.repository.UserRepository;
 
@@ -31,6 +31,7 @@ public class AuthEventListener {
 
     private final UserRepository userRepository;
     private final IncidentLogRepository incidentLogRepository;
+    private final AuditLogRepository auditLogRepository;
 
     @EventListener
     @Transactional
@@ -49,21 +50,21 @@ public class AuthEventListener {
             }
             userRepository.save(user);
 
-            IncidentLog log = new IncidentLog();
-            log.setEventType(IncidentType.FAILED_LOGIN);
-            log.setSeverity(attempts >= MAX_FAILED_ATTEMPTS ? IncidentSeverity.HIGH : IncidentSeverity.MEDIUM);
-            log.setStatus(IncidentStatus.OPEN);
-            log.setActor(user);
-            log.setUsername(user.getUsername());
-            log.setDescription("Failed login attempt " + attempts + " for user");
-            populateRequestContext(log);
-            incidentLogRepository.save(log);
+            // AUDIT: failed login attempt (each try)
+            AuditLog a = new AuditLog();
+            a.setActionType(AuditAction.FAILED_LOGIN);
+            a.setUsername(user.getUsername());
+            a.setDescription("Failed login attempt " + attempts + " for user");
+            populateRequestContext(a);
+            a.setActor(user);
+            auditLogRepository.save(a);
 
             if (justLocked) {
-                IncidentLog lockLog = new IncidentLog();
-                lockLog.setEventType(IncidentType.ACCOUNT_LOCKED);
-                lockLog.setSeverity(IncidentSeverity.HIGH);
-                lockLog.setStatus(IncidentStatus.OPEN);
+                // INCIDENT: account locked
+                var lockLog = new com.tmc.system.tmc_secure_system.entity.IncidentLog();
+                lockLog.setEventType(com.tmc.system.tmc_secure_system.entity.enums.IncidentType.ACCOUNT_LOCKED);
+                lockLog.setSeverity(com.tmc.system.tmc_secure_system.entity.enums.IncidentSeverity.HIGH);
+                lockLog.setStatus(com.tmc.system.tmc_secure_system.entity.enums.IncidentStatus.OPEN);
                 lockLog.setActor(user);
                 lockLog.setUsername(user.getUsername());
                 lockLog.setDescription("Account locked due to excessive failed logins");
@@ -72,14 +73,13 @@ public class AuthEventListener {
             }
 
         }, () -> {
-            IncidentLog log = new IncidentLog();
-            log.setEventType(IncidentType.FAILED_LOGIN);
-            log.setSeverity(IncidentSeverity.MEDIUM);
-            log.setStatus(IncidentStatus.OPEN);
-            log.setUsername(principal);
-            log.setDescription("Failed login with unknown username/email");
-            populateRequestContext(log);
-            incidentLogRepository.save(log);
+            // AUDIT: failed login with unknown user
+            AuditLog a = new AuditLog();
+            a.setActionType(AuditAction.FAILED_LOGIN);
+            a.setUsername(principal);
+            a.setDescription("Failed login with unknown username/email");
+            populateRequestContext(a);
+            auditLogRepository.save(a);
         });
     }
 
@@ -95,16 +95,14 @@ public class AuthEventListener {
             }
             if (changed) userRepository.save(user);
 
-            // Audit: login success
-            IncidentLog ok = new IncidentLog();
-            ok.setEventType(IncidentType.LOGIN_SUCCESS);
-            ok.setSeverity(IncidentSeverity.LOW);
-            ok.setStatus(IncidentStatus.OPEN);
-            ok.setActor(user);
+            // AUDIT: login success
+            AuditLog ok = new AuditLog();
+            ok.setActionType(AuditAction.LOGIN_SUCCESS);
             ok.setUsername(user.getUsername());
             ok.setDescription("User logged in successfully");
             populateRequestContext(ok);
-            incidentLogRepository.save(ok);
+            ok.setActor(user);
+            auditLogRepository.save(ok);
         });
     }
 
@@ -115,15 +113,14 @@ public class AuthEventListener {
         if (principal == null) return;
 
         userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(principal, principal).ifPresent(user -> {
-            IncidentLog log = new IncidentLog();
-            log.setEventType(IncidentType.LOGOUT);
-            log.setSeverity(IncidentSeverity.LOW);
-            log.setStatus(IncidentStatus.OPEN);
-            log.setActor(user);
+            // AUDIT: logout
+            AuditLog log = new AuditLog();
+            log.setActionType(AuditAction.LOGOUT);
             log.setUsername(user.getUsername());
             log.setDescription("User logged out");
             populateRequestContext(log);
-            incidentLogRepository.save(log);
+            log.setActor(user);
+            auditLogRepository.save(log);
         });
     }
 
@@ -141,6 +138,16 @@ public class AuthEventListener {
 
             log.setSessionId(session != null ? session.getId() : null);
 
+        }
+    }
+
+    private void populateRequestContext(AuditLog log) {
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs != null) {
+            HttpServletRequest req = attrs.getRequest();
+            log.setIpAddress(clientIp(req));
+            HttpSession session = req.getSession(false);
+            log.setSessionId(session != null ? session.getId() : null);
         }
     }
 
