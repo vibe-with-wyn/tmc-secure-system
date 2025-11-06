@@ -1,5 +1,6 @@
 package com.tmc.system.tmc_secure_system.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +15,6 @@ public interface EncryptedFileRepository extends JpaRepository<EncryptedFile, Lo
 
     @Query("select f from EncryptedFile f order by f.uploadTime desc")
     List<EncryptedFile> findAllOrderByUploadTimeDesc();
+
+    long countByUploadTimeAfter(LocalDateTime after);
 }

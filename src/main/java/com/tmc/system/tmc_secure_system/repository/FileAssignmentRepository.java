@@ -53,4 +53,6 @@ public interface FileAssignmentRepository extends JpaRepository<FileAssignment, 
                                              @Param("status") AssignmentStatus status);
 
     boolean existsByFile_IdAndAnalyst_IdAndStatus(Long fileId, Long analystId, AssignmentStatus status);
+
+    long countByStatus(AssignmentStatus status);
 }

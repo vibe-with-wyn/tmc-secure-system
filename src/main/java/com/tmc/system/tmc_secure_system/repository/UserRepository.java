@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import com.tmc.system.tmc_secure_system.entity.User;
 import com.tmc.system.tmc_secure_system.entity.enums.RoleName;
+import com.tmc.system.tmc_secure_system.entity.enums.UserStatus;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -16,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCase(String email);
 
     List<User> findAllByRole(RoleName role);
+
+    long countByStatus(UserStatus status);
 }

@@ -11,13 +11,116 @@
   <div class="container">
     <a class="navbar-brand" href="#">TMC CyberGuard</a>
     <div class="d-flex">
-      <a class="btn btn-outline-light btn-sm" href="/logout">Logout</a>
+      <form th:action="@{/logout}" method="post" class="ms-2">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button class="btn btn-outline-light btn-sm" type="submit">Logout</button>
+      </form>
     </div>
   </div>
 </nav>
 <div class="container py-4">
   <h3>CISO / IT Director</h3>
-  <p>KPIs and summaries will appear here.</p>
+  <p class="text-muted">Key risk indicators and recent activity.</p>
+
+  <!-- KPI Cards -->
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Total Encrypted Files</div>
+          <div class="display-6" th:text="${totalFiles}">0</div>
+          <small class="text-muted">+<span th:text="${uploads7d}">0</span> last 7d</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Active Assignments</div>
+          <div class="display-6" th:text="${activeAssignments}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Open Incidents</div>
+          <div class="display-6" th:text="${openIncidents}">0</div>
+          <small class="text-danger">Critical 24h: <span th:text="${critical24h}">0</span></small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Locked Users</div>
+          <div class="display-6" th:text="${lockedUsers}">0</div>
+          <small class="text-muted">Failed logins 24h: <span th:text="${failedLogins24h}">0</span></small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Incidents -->
+  <div class="card shadow-sm mt-4">
+    <div class="card-header">Recent Incidents</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead>
+          <tr>
+            <th style="width:170px">Time</th>
+            <th style="width:140px">User</th>
+            <th style="width:160px">Type</th>
+            <th style="width:120px">Severity</th>
+            <th>Description</th>
+            <th style="width:140px">IP</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="l : ${recentIncidents}">
+            <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+            <td th:text="${l.username}"></td>
+            <td th:text="${l.eventType}"></td>
+            <td th:text="${l.severity}"></td>
+            <td th:text="${l.description}"></td>
+            <td th:text="${l.ipAddress}"></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Audit Activity -->
+  <div class="card shadow-sm mt-3">
+    <div class="card-header">Recent Audit Activity</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead>
+          <tr>
+            <th style="width:170px">Time</th>
+            <th style="width:140px">User</th>
+            <th style="width:180px">Action</th>
+            <th>Description</th>
+            <th style="width:140px">IP</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="l : ${recentAudits}">
+            <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+            <td th:text="${l.username}"></td>
+            <td th:text="${l.actionType}"></td>
+            <td th:text="${l.description}"></td>
+            <td th:text="${l.ipAddress}"></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>
 </body>
 </html>
