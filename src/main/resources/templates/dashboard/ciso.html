@@ -20,7 +20,7 @@
 </nav>
 <div class="container py-4">
   <h3>CISO / IT Director</h3>
-  <p class="text-muted">Key risk indicators and recent activity.</p>
+  <p class="text-muted">Key risk indicators and paginated activity.</p>
 
   <!-- KPI Cards -->
   <div class="row g-3">
@@ -61,9 +61,9 @@
     </div>
   </div>
 
-  <!-- Recent Incidents -->
+  <!-- Incident Logs (Paginated) -->
   <div class="card shadow-sm mt-4">
-    <div class="card-header">Recent Incidents</div>
+    <div class="card-header">Incident Logs</div>
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-sm table-hover align-middle">
@@ -78,8 +78,8 @@
           </tr>
           </thead>
           <tbody>
-          <tr th:each="l : ${recentIncidents}">
-            <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+          <tr th:each="l : ${incidents.content}">
+            <td th:text="${@uiDates.format(l.eventTime)}"></td>
             <td th:text="${l.username}"></td>
             <td th:text="${l.eventType}"></td>
             <td th:text="${l.severity}"></td>
@@ -89,12 +89,33 @@
           </tbody>
         </table>
       </div>
+      <nav th:if="${incidents.totalPages > 1}" aria-label="Incident pagination">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item" th:classappend="${incidents.first} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/api/ciso/home(
+                 incPage=${incidents.number-1}, incSize=${incidents.size},
+                 audPage=${audits.number}, audSize=${audits.size}
+               )}">Prev</a>
+          </li>
+          <li class="page-item disabled">
+            <span class="page-link" th:text="${incidents.number + 1} + ' / ' + ${incidents.totalPages}"></span>
+          </li>
+          <li class="page-item" th:classappend="${incidents.last} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/api/ciso/home(
+                 incPage=${incidents.number+1}, incSize=${incidents.size},
+                 audPage=${audits.number}, audSize=${audits.size}
+               )}">Next</a>
+          </li>
+        </ul>
+      </nav>
     </div>
   </div>
 
-  <!-- Recent Audit Activity -->
+  <!-- Audit Logs (Paginated) -->
   <div class="card shadow-sm mt-3">
-    <div class="card-header">Recent Audit Activity</div>
+    <div class="card-header">Audit Logs</div>
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-sm table-hover align-middle">
@@ -108,8 +129,8 @@
           </tr>
           </thead>
           <tbody>
-          <tr th:each="l : ${recentAudits}">
-            <td th:text="${#temporals.format(l.eventTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+          <tr th:each="l : ${audits.content}">
+            <td th:text="${@uiDates.format(l.eventTime)}"></td>
             <td th:text="${l.username}"></td>
             <td th:text="${l.actionType}"></td>
             <td th:text="${l.description}"></td>
@@ -118,6 +139,27 @@
           </tbody>
         </table>
       </div>
+      <nav th:if="${audits.totalPages > 1}" aria-label="Audit pagination">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item" th:classappend="${audits.first} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/api/ciso/home(
+                 incPage=${incidents.number}, incSize=${incidents.size},
+                 audPage=${audits.number-1}, audSize=${audits.size}
+               )}">Prev</a>
+          </li>
+          <li class="page-item disabled">
+            <span class="page-link" th:text="${audits.number + 1} + ' / ' + ${audits.totalPages}"></span>
+          </li>
+          <li class="page-item" th:classappend="${audits.last} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/api/ciso/home(
+                 incPage=${incidents.number}, incSize=${incidents.size},
+                 audPage=${audits.number+1}, audSize=${audits.size}
+               )}">Next</a>
+          </li>
+        </ul>
+      </nav>
     </div>
   </div>
 

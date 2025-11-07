@@ -2,12 +2,14 @@ package com.tmc.system.tmc_secure_system.controller;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.tmc.system.tmc_secure_system.entity.AuditLog;
 import com.tmc.system.tmc_secure_system.entity.IncidentLog;
@@ -37,7 +39,12 @@ public class CisoController {
 
     @PreAuthorize("hasRole('CISO')")
     @GetMapping("/api/ciso/home")
-    public String home(Model model) {
+    public String home(Model model,
+                       @RequestParam(value = "incPage", defaultValue = "0") int incPage,
+                       @RequestParam(value = "incSize", defaultValue = "10") int incSize,
+                       @RequestParam(value = "audPage", defaultValue = "0") int audPage,
+                       @RequestParam(value = "audSize", defaultValue = "10") int audSize) {
+
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime last24h = now.minusHours(24);
         LocalDateTime last7d = now.minusDays(7);
@@ -52,11 +59,11 @@ public class CisoController {
         long critical24h = incidentRepo.count(specIncSeveritySince(IncidentSeverity.CRITICAL, last24h));
         long failedLogins24h = auditRepo.count(specAuditActionSince(AuditAction.FAILED_LOGIN, last24h));
 
-        // Recent activity
-        var recentIncidents = incidentRepo.findAll(
-                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "eventTime"))).map(i -> i).getContent();
-        var recentAudits = auditRepo.findAll(
-                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "eventTime"))).map(a -> a).getContent();
+        // Paginated logs (all records)
+        Page<IncidentLog> incidents = incidentRepo.findAll(
+                PageRequest.of(incPage, incSize, Sort.by(Sort.Direction.DESC, "eventTime")));
+        Page<AuditLog> audits = auditRepo.findAll(
+                PageRequest.of(audPage, audSize, Sort.by(Sort.Direction.DESC, "eventTime")));
 
         model.addAttribute("totalFiles", totalFiles);
         model.addAttribute("uploads7d", uploads7d);
@@ -66,13 +73,17 @@ public class CisoController {
         model.addAttribute("critical24h", critical24h);
         model.addAttribute("failedLogins24h", failedLogins24h);
 
-        model.addAttribute("recentIncidents", recentIncidents);
-        model.addAttribute("recentAudits", recentAudits);
+        model.addAttribute("incidents", incidents);
+        model.addAttribute("audits", audits);
+
+        // Keep current paging params to preserve state in links
+        model.addAttribute("incSize", incSize);
+        model.addAttribute("audSize", audSize);
 
         return "dashboard/ciso";
     }
 
-    // Specs
+    // Specs for KPI counts
     private Specification<IncidentLog> specIncStatus(IncidentStatus status) {
         return (root, q, cb) -> cb.equal(root.get("status"), status);
     }
