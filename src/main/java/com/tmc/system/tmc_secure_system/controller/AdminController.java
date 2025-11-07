@@ -37,6 +37,7 @@ import com.tmc.system.tmc_secure_system.repository.AuditLogRepository;
 import com.tmc.system.tmc_secure_system.repository.spec.LogSpecifications;
 import com.tmc.system.tmc_secure_system.util.DateRanges;
 import com.tmc.system.tmc_secure_system.util.UserLookups;
+import com.tmc.system.tmc_secure_system.service.AssignmentService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,7 @@ public class AdminController {
     private final IncidentLogRepository incidentRepo;
     private final AuditLogRepository auditLogRepo;
     private final PasswordEncoder passwordEncoder;
+    private final AssignmentService assignmentService; // add service
 
     @GetMapping("/api/admin/home")
     public String home(Model model,
@@ -67,6 +69,8 @@ public class AdminController {
         model.addAttribute("files", fileRepo.findAllOrderByUploadTimeDesc());
         model.addAttribute("roles", RoleName.values());
         model.addAttribute("severities", IncidentSeverity.values());
+        // add active assignments for management table
+        model.addAttribute("activeAssignments", assignmentRepo.findActiveWithJoins(AssignmentStatus.ACTIVE));
 
         Pageable pageable = PageRequest.of(page, size);
         LocalDateTime from = DateRanges.parseStart(fromDate);
@@ -205,6 +209,22 @@ public class AdminController {
                 null);
 
         ra.addFlashAttribute("success", "Assignment created.");
+        return "redirect:/api/admin/home";
+    }
+
+    @PostMapping("/api/admin/assignments/revoke")
+    public String revokeAssignment(Principal principal,
+                                   HttpServletRequest request,
+                                   RedirectAttributes ra,
+                                   @RequestParam Long assignmentId) {
+        try {
+            assignmentService.revoke(assignmentId);
+            logAdminAction(principal, request, IncidentSeverity.MEDIUM,
+                    "Revoked file assignment ID: " + assignmentId, assignmentId);
+            ra.addFlashAttribute("success", "Assignment revoked.");
+        } catch (Exception ex) {
+            ra.addFlashAttribute("error", "Failed to revoke assignment: " + ex.getMessage());
+        }
         return "redirect:/api/admin/home";
     }
 

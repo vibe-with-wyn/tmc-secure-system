@@ -122,6 +122,7 @@
       </div>
     </div>
     <div class="card-body">
+      <!-- Create assignment -->
       <form method="post" th:action="@{/api/admin/assignments/create}" class="row g-2">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
         <div class="col-md-6">
@@ -156,6 +157,48 @@
           <button class="btn btn-primary" type="submit">Assign</button>
         </div>
       </form>
+
+      <hr/>
+
+      <!-- Active assignments with Revoke -->
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead>
+          <tr>
+            <th style="width:80px">ID</th>
+            <th>File</th>
+            <th>Analyst</th>
+            <th>Assigned By</th>
+            <th style="width:170px">Assigned At</th>
+            <th style="width:170px">Expires At</th>
+            <th style="width:110px">Status</th>
+            <th style="width:140px">Actions</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="fa : ${activeAssignments}">
+            <td th:text="${fa.id}">1</td>
+            <td>
+              <div class="small fw-semibold" th:text="${fa.file.filename}">file.xlsx</div>
+              <div class="text-muted small">ID <span th:text="${fa.file.id}">10</span></div>
+            </td>
+            <td th:text="${fa.analyst.username}">analyst</td>
+            <td th:text="${fa.assignedBy.username}">admin</td>
+            <td th:text="${@uiDates.format(fa.assignedAt)}">2025-11-07 10:20:30</td>
+            <td th:text="${fa.expiresAt != null ? @uiDates.format(fa.expiresAt) : '-'}">-</td>
+            <td><span class="badge text-bg-success" th:text="${fa.status}">ACTIVE</span></td>
+            <td>
+              <form method="post" th:action="@{/api/admin/assignments/revoke}"
+                    onsubmit="return confirm('Revoke assignment ID ' + this.assignmentId.value + '?');">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <input type="hidden" name="assignmentId" th:value="${fa.id}"/>
+                <button class="btn btn-outline-danger btn-sm" type="submit">Revoke</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
