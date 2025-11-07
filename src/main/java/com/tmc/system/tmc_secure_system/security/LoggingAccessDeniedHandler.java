@@ -13,7 +13,6 @@ import com.tmc.system.tmc_secure_system.entity.enums.IncidentSeverity;
 import com.tmc.system.tmc_secure_system.entity.enums.IncidentStatus;
 import com.tmc.system.tmc_secure_system.entity.enums.IncidentType;
 import com.tmc.system.tmc_secure_system.repository.IncidentLogRepository;
-import com.tmc.system.tmc_secure_system.repository.UserRepository;
 import com.tmc.system.tmc_secure_system.service.LogHelper;
 
 import jakarta.servlet.ServletException;
@@ -24,12 +23,10 @@ import jakarta.servlet.http.HttpServletResponse;
 public class LoggingAccessDeniedHandler implements AccessDeniedHandler {
 
     private final IncidentLogRepository incidentRepo;
-    private final UserRepository userRepo;
     private final LogHelper logHelper;
 
-    public LoggingAccessDeniedHandler(IncidentLogRepository incidentRepo, UserRepository userRepo, LogHelper logHelper) {
+    public LoggingAccessDeniedHandler(IncidentLogRepository incidentRepo, LogHelper logHelper) {
         this.incidentRepo = incidentRepo;
-        this.userRepo = userRepo;
         this.logHelper = logHelper;
     }
 
@@ -45,8 +42,8 @@ public class LoggingAccessDeniedHandler implements AccessDeniedHandler {
         log.setStatus(IncidentStatus.OPEN);
         log.setDescription("Access denied to " + request.getMethod() + " " + request.getRequestURI());
 
+        // Enrich sets username, actor (if exists), ip and session
         logHelper.enrichIncident(log, principal);
-        userRepo.findByUsernameIgnoreCaseOrEmailIgnoreCase(principal, principal).ifPresent(log::setActor);
         incidentRepo.save(log);
 
         response.sendRedirect(request.getContextPath() + "/403");
