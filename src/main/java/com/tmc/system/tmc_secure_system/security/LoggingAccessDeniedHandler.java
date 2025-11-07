@@ -14,6 +14,7 @@ import com.tmc.system.tmc_secure_system.entity.enums.IncidentStatus;
 import com.tmc.system.tmc_secure_system.entity.enums.IncidentType;
 import com.tmc.system.tmc_secure_system.repository.IncidentLogRepository;
 import com.tmc.system.tmc_secure_system.repository.UserRepository;
+import com.tmc.system.tmc_secure_system.service.LogHelper;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,10 +25,12 @@ public class LoggingAccessDeniedHandler implements AccessDeniedHandler {
 
     private final IncidentLogRepository incidentRepo;
     private final UserRepository userRepo;
+    private final LogHelper logHelper;
 
-    public LoggingAccessDeniedHandler(IncidentLogRepository incidentRepo, UserRepository userRepo) {
+    public LoggingAccessDeniedHandler(IncidentLogRepository incidentRepo, UserRepository userRepo, LogHelper logHelper) {
         this.incidentRepo = incidentRepo;
         this.userRepo = userRepo;
+        this.logHelper = logHelper;
     }
 
     @Override
@@ -40,12 +43,9 @@ public class LoggingAccessDeniedHandler implements AccessDeniedHandler {
         log.setEventType(IncidentType.UNAUTHORIZED_ACCESS);
         log.setSeverity(IncidentSeverity.MEDIUM);
         log.setStatus(IncidentStatus.OPEN);
-        log.setUsername(principal);
         log.setDescription("Access denied to " + request.getMethod() + " " + request.getRequestURI());
-        log.setIpAddress(request.getRemoteAddr());
-        var session = request.getSession(false);
-        log.setSessionId(session != null ? session.getId() : null);
 
+        logHelper.enrichIncident(log, principal);
         userRepo.findByUsernameIgnoreCaseOrEmailIgnoreCase(principal, principal).ifPresent(log::setActor);
         incidentRepo.save(log);
 

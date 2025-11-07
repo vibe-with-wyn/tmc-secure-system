@@ -7,18 +7,14 @@ import org.springframework.security.authentication.event.AuthenticationFailureBa
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.authentication.event.LogoutSuccessEvent;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.tmc.system.tmc_secure_system.entity.AuditLog;
-import com.tmc.system.tmc_secure_system.entity.IncidentLog;
 import com.tmc.system.tmc_secure_system.entity.enums.AuditAction;
 import com.tmc.system.tmc_secure_system.repository.AuditLogRepository;
 import com.tmc.system.tmc_secure_system.repository.IncidentLogRepository;
 import com.tmc.system.tmc_secure_system.repository.UserRepository;
+import com.tmc.system.tmc_secure_system.service.LogHelper;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +28,7 @@ public class AuthEventListener {
     private final UserRepository userRepository;
     private final IncidentLogRepository incidentLogRepository;
     private final AuditLogRepository auditLogRepository;
+    private final LogHelper logHelper;
 
     @EventListener
     @Transactional
@@ -53,10 +50,8 @@ public class AuthEventListener {
             // AUDIT: failed login attempt (each try)
             AuditLog a = new AuditLog();
             a.setActionType(AuditAction.FAILED_LOGIN);
-            a.setUsername(user.getUsername());
             a.setDescription("Failed login attempt " + attempts + " for user");
-            populateRequestContext(a);
-            a.setActor(user);
+            logHelper.enrichAudit(a, user.getUsername());
             auditLogRepository.save(a);
 
             if (justLocked) {
@@ -65,10 +60,8 @@ public class AuthEventListener {
                 lockLog.setEventType(com.tmc.system.tmc_secure_system.entity.enums.IncidentType.ACCOUNT_LOCKED);
                 lockLog.setSeverity(com.tmc.system.tmc_secure_system.entity.enums.IncidentSeverity.HIGH);
                 lockLog.setStatus(com.tmc.system.tmc_secure_system.entity.enums.IncidentStatus.OPEN);
-                lockLog.setActor(user);
-                lockLog.setUsername(user.getUsername());
                 lockLog.setDescription("Account locked due to excessive failed logins");
-                populateRequestContext(lockLog);
+                logHelper.enrichIncident(lockLog, user.getUsername());
                 incidentLogRepository.save(lockLog);
             }
 
@@ -76,9 +69,8 @@ public class AuthEventListener {
             // AUDIT: failed login with unknown user
             AuditLog a = new AuditLog();
             a.setActionType(AuditAction.FAILED_LOGIN);
-            a.setUsername(principal);
             a.setDescription("Failed login with unknown username/email");
-            populateRequestContext(a);
+            logHelper.enrichAudit(a, principal);
             auditLogRepository.save(a);
         });
     }
@@ -98,10 +90,8 @@ public class AuthEventListener {
             // AUDIT: login success
             AuditLog ok = new AuditLog();
             ok.setActionType(AuditAction.LOGIN_SUCCESS);
-            ok.setUsername(user.getUsername());
             ok.setDescription("User logged in successfully");
-            populateRequestContext(ok);
-            ok.setActor(user);
+            logHelper.enrichAudit(ok, user.getUsername());
             auditLogRepository.save(ok);
         });
     }
@@ -116,54 +106,9 @@ public class AuthEventListener {
             // AUDIT: logout
             AuditLog log = new AuditLog();
             log.setActionType(AuditAction.LOGOUT);
-            log.setUsername(user.getUsername());
             log.setDescription("User logged out");
-            populateRequestContext(log);
-            log.setActor(user);
+            logHelper.enrichAudit(log, user.getUsername());
             auditLogRepository.save(log);
         });
-    }
-
-    private void populateRequestContext(IncidentLog log) {
-
-        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-
-        if (attrs != null) {
-
-            HttpServletRequest req = attrs.getRequest();
-
-            log.setIpAddress(clientIp(req));
-
-            HttpSession session = req.getSession(false);
-
-            log.setSessionId(session != null ? session.getId() : null);
-
-        }
-    }
-
-    private void populateRequestContext(AuditLog log) {
-        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attrs != null) {
-            HttpServletRequest req = attrs.getRequest();
-            log.setIpAddress(clientIp(req));
-            HttpSession session = req.getSession(false);
-            log.setSessionId(session != null ? session.getId() : null);
-        }
-    }
-
-    private String clientIp(HttpServletRequest request) {
-
-        String[] headers = {"X-Forwarded-For", "X-Real-IP", "CF-Connecting-IP"};
-
-        for (String h : headers) {
-
-            String v = request.getHeader(h);
-
-            if (v != null && !v.isBlank()) return v.split(",")[0].trim();
-
-        }
-
-        return request.getRemoteAddr();
-        
     }
 }

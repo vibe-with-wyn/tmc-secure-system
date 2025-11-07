@@ -1,10 +1,7 @@
 package com.tmc.system.tmc_secure_system.controller;
 
 import java.security.Principal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -37,10 +34,10 @@ import com.tmc.system.tmc_secure_system.repository.IncidentLogRepository;
 import com.tmc.system.tmc_secure_system.repository.UserRepository;
 import com.tmc.system.tmc_secure_system.entity.AuditLog;
 import com.tmc.system.tmc_secure_system.repository.AuditLogRepository;
+import com.tmc.system.tmc_secure_system.repository.spec.LogSpecifications;
+import com.tmc.system.tmc_secure_system.util.DateRanges;
+import com.tmc.system.tmc_secure_system.util.UserLookups;
 
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
@@ -72,46 +69,13 @@ public class AdminController {
         model.addAttribute("severities", IncidentSeverity.values());
 
         Pageable pageable = PageRequest.of(page, size);
-        LocalDateTime from = parseDateStart(fromDate);
-        LocalDateTime to = parseDateEnd(toDate);
+        LocalDateTime from = DateRanges.parseStart(fromDate);
+        LocalDateTime to = DateRanges.parseEnd(toDate);
 
-        Long actorId = null;
-        if (userFilter != null && !userFilter.isBlank()) {
-            actorId = userRepo.findByUsernameIgnoreCaseOrEmailIgnoreCase(userFilter.trim(), userFilter.trim())
-                    .map(User::getId)
-                    .orElse(null);
-        }
+        Long actorId = UserLookups.resolveActorId(userRepo, userFilter);
 
-        final Long finalActorId = actorId;
-        final LocalDateTime fromTs = from;
-        final LocalDateTime toTs = to;
-
-        Specification<IncidentLog> incidentSpec = (root, query, cb) -> {
-            java.util.List<Predicate> ps = new java.util.ArrayList<>();
-            if (finalActorId != null) {
-                Join<Object, Object> actor = root.join("actor", JoinType.LEFT);
-                ps.add(cb.equal(actor.get("id"), finalActorId));
-            }
-            if (severity != null) {
-                ps.add(cb.equal(root.get("severity"), severity));
-            }
-            if (fromTs != null) ps.add(cb.greaterThanOrEqualTo(root.get("eventTime"), fromTs));
-            if (toTs != null) ps.add(cb.lessThanOrEqualTo(root.get("eventTime"), toTs));
-            query.orderBy(cb.desc(root.get("eventTime")));
-            return cb.and(ps.toArray(new Predicate[0]));
-        };
-
-        Specification<AuditLog> auditSpec = (root, query, cb) -> {
-            java.util.List<Predicate> ps = new java.util.ArrayList<>();
-            if (finalActorId != null) {
-                Join<Object, Object> actor = root.join("actor", JoinType.LEFT);
-                ps.add(cb.equal(actor.get("id"), finalActorId));
-            }
-            if (fromTs != null) ps.add(cb.greaterThanOrEqualTo(root.get("eventTime"), fromTs));
-            if (toTs != null) ps.add(cb.lessThanOrEqualTo(root.get("eventTime"), toTs));
-            query.orderBy(cb.desc(root.get("eventTime")));
-            return cb.and(ps.toArray(new Predicate[0]));
-        };
+        Specification<IncidentLog> incidentSpec = LogSpecifications.forIncidents(actorId, severity, from, to);
+        Specification<AuditLog> auditSpec = LogSpecifications.forAudits(actorId, from, to);
 
         Page<IncidentLog> incidents = incidentRepo.findAll(incidentSpec, pageable);
         Page<AuditLog> audits = auditLogRepo.findAll(auditSpec, pageable);
@@ -140,18 +104,6 @@ public class AdminController {
         }
         userRepo.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username).ifPresent(log::setActor);
         auditLogRepo.save(log);
-    }
-
-    private static LocalDateTime parseDateStart(String s) {
-        if (s == null || s.isBlank()) return null;
-        LocalDate d = LocalDate.parse(s, DateTimeFormatter.ISO_DATE);
-        return d.atStartOfDay();
-    }
-
-    private static LocalDateTime parseDateEnd(String s) {
-        if (s == null || s.isBlank()) return null;
-        LocalDate d = LocalDate.parse(s, DateTimeFormatter.ISO_DATE);
-        return d.atTime(LocalTime.MAX);
     }
 
     @PostMapping("/api/admin/users/create")
