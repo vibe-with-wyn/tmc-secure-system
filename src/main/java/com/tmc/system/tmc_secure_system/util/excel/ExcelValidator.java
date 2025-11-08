@@ -1,8 +1,10 @@
 package com.tmc.system.tmc_secure_system.util.excel;
 
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -11,32 +13,23 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelValidator {
 
-    // Timestamp | MachineID | Temperature (°C) | Pressure (bar) | Vibration (Hz) |
-    // OutputRate (units/hr) | EnergyConsumption (kWh) | OperatorID | Status
-    private static final Set<String> REQUIRED_HEADERS_CANONICAL = Set.of(
-        "timestamp",
-        "machineid",
-        "temperaturec",
-        "pressurebar",
-        "vibrationhz",
-        "outputrateunitshr",
-        "energyconsumptionkwh",
-        "operatorid",
-        "status"
+    // Define required headers once with canonical+friendly names
+    private static final List<HeaderSpec> REQUIRED = List.of(
+        new HeaderSpec("timestamp", "Timestamp"),
+        new HeaderSpec("machineid", "MachineID"),
+        new HeaderSpec("temperaturec", "Temperature (°C)"),
+        new HeaderSpec("pressurebar", "Pressure (bar)"),
+        new HeaderSpec("vibrationhz", "Vibration (Hz)"),
+        new HeaderSpec("outputrateunitshr", "OutputRate (units/hr)"),
+        new HeaderSpec("energyconsumptionkwh", "EnergyConsumption (kWh)"),
+        new HeaderSpec("operatorid", "OperatorID"),
+        new HeaderSpec("status", "Status")
     );
 
-    // Friendly names for error messages (ordered)
-    private static final List<String> REQUIRED_HEADERS_FRIENDLY = List.of(
-        "Timestamp",
-        "MachineID",
-        "Temperature (°C)",
-        "Pressure (bar)",
-        "Vibration (Hz)",
-        "OutputRate (units/hr)",
-        "EnergyConsumption (kWh)",
-        "OperatorID",
-        "Status"
-    );
+    private static final Set<String> REQUIRED_CANONICAL = REQUIRED.stream()
+            .map(HeaderSpec::canonical).collect(Collectors.toUnmodifiableSet());
+
+    private static final Map<String, String> CANONICAL_TO_FRIENDLY = buildFriendlyMap();
 
     public static ValidationResult validate(InputStream in) {
         try (XSSFWorkbook wb = new XSSFWorkbook(in)) {
@@ -55,14 +48,12 @@ public class ExcelValidator {
                 Cell cell = header.getCell(i);
                 if (cell != null) {
                     String raw = formatter.formatCellValue(cell);
-                    if (raw != null) {
-                        headersCanonical.add(canonicalize(raw));
-                    }
+                    if (raw != null) headersCanonical.add(canonicalize(raw));
                 }
             }
 
-            // Determine missing headers by canonical comparison
-            List<String> missing = REQUIRED_HEADERS_CANONICAL.stream()
+            // Missing required headers
+            List<String> missing = REQUIRED_CANONICAL.stream()
                 .filter(req -> !headersCanonical.contains(req))
                 .map(ExcelValidator::toFriendlyFromCanonical)
                 .collect(Collectors.toList());
@@ -72,7 +63,7 @@ public class ExcelValidator {
                 return new ValidationResult(false, msg, missing);
             }
 
-            // Basic data presence check: at least one data row
+            // At least one data row
             if (sheet.getPhysicalNumberOfRows() < 2) {
                 return ValidationResult.fail("No data rows found");
             }
@@ -89,23 +80,16 @@ public class ExcelValidator {
     }
 
     private static String toFriendlyFromCanonical(String c) {
-        // Map canonical back to friendly label if we know it; else return canonical
-        int idx = List.of(
-            "timestamp",
-            "machineid",
-            "temperaturec",
-            "pressurebar",
-            "vibrationhz",
-            "outputrateunitshr",
-            "energyconsumptionkwh",
-            "operatorid",
-            "status"
-        ).indexOf(c);
-        if (idx >= 0 && idx < REQUIRED_HEADERS_FRIENDLY.size()) {
-            return REQUIRED_HEADERS_FRIENDLY.get(idx);
-        }
-        return c;
+        return CANONICAL_TO_FRIENDLY.getOrDefault(c, c);
     }
+
+    private static Map<String, String> buildFriendlyMap() {
+        Map<String, String> m = new HashMap<>();
+        for (HeaderSpec h : REQUIRED) m.put(h.canonical(), h.friendly());
+        return m;
+    }
+
+    private record HeaderSpec(String canonical, String friendly) {}
 
     public record ValidationResult(boolean valid, String message, List<String> errors) {
         public static ValidationResult ok(String message) {

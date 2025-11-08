@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,20 +16,17 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class RoleBasedAuthSuccessHandler implements AuthenticationSuccessHandler {
 
+    private final DashboardResolver dashboardResolver = new DashboardResolver();
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
-     
+
         Set<String> roles = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
 
-        String target = "/health"; // fallback
-        if (roles.contains("ROLE_ADMIN")) target = "/api/admin/home";
-        else if (roles.contains("ROLE_IT_ANALYST")) target = "/api/analyst/home";
-        else if (roles.contains("ROLE_OT_OPERATOR")) target = "/api/ot/home";
-        else if (roles.contains("ROLE_COMPLIANCE_OFFICER")) target = "/api/compliance/home";
-        else if (roles.contains("ROLE_CISO")) target = "/api/ciso/home";
-
+        String target = dashboardResolver.resolve(roles);
         response.sendRedirect(target);
     }
 }
